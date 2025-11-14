@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flappy with Friends</title>
+    <style>
+        /* Changed font import to a more traditional pixel font for clearer numbers */
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap'); 
+
+        body {
+            background: #3c3b5d;  
+            margin: 0;
+            padding-top: 50px;  
+            text-align: center;  
+            /* Switched body font to VT323 for better number clarity in menus/game over */
+            font-family: 'VT323', monospace;
+        }
+
+        #gameContainer {
+            position: relative;
+            display: inline-block;
+            margin: 0 auto;
+        }
+
+        canvas {
+            background-color: #556080; 
+            border: 5px solid #282828;
+            border-radius: 0;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+        }
+        
+        /* ⭐️ NEW GOLD DISPLAY STYLING ⭐️ */
+        #goldDisplay {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            padding: 5px 10px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #FFD700;
+            border-radius: 5px;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            z-index: 30; /* Ensure it is above other elements */
+            display: flex;
+            align-items: center;
+            text-shadow: 1px 1px #000000;
+            display: none; /* Hide by default, managed by JS loop */
+        }
+        
+        #goldIcon {
+            font-size: 20px;
+            margin-right: 5px;
+            color: #FFD700;
+        }
+
+
+        /* Menu Styling - Shared */
+        #gameMenu, #characterScreen { 
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 250px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 5px solid #ffcc00;
+            border-radius: 10px;
+            color: white;
+            text-align: center;
+            z-index: 20;  
+            display: none; 
+        }
+        
+        #gameMenu h2, #characterScreen h2 {
+            font-size: 40px;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px #ff0000;
+        }
+        
+        #gameMenu button, #characterScreen button, #purchaseButton, #unlockScreen button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 20px;
+            font-weight: bold;
+            background: #4caf50;
+            color: white;
+            border: 3px solid #282828;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        #gameMenu button:hover, #characterScreen button:hover, #purchaseButton:not([disabled]):hover, #unlockScreen button:hover {
+            background: #66bb6a;
+        }
+
+        /* Character Selection Screen Specifics */
+        #charSelectionControls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        #charSelectionControls button {
+            width: 60px;
+            margin: 0;
+        }
+        
+        #charPreview {
+            position: relative; 
+            width: 60px;
+            height: 60px;
+            border: 2px solid white;
+            background: #3c3b5d;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        #charPreview img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            image-rendering: pixelated; 
+            transition: opacity 0.3s;
+        }
+        
+        #charPreview.locked img {
+            opacity: 0.3; 
+        }
+
+        #playerCharacter {
+            position: absolute;
+            z-index: 5;  
+            visibility: hidden;  
+            left: 5px;  
+            top: 5px;
+            image-rendering: pixelated; 
+        }
+
+        /* ⭐️ GAME OVER SCREEN STYLING ⭐️ */
+        #gameOverScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 280px; 
+            padding: 15px; 
+            background: rgba(0, 0, 0, 0.7); 
+            border: 5px solid #282828; 
+            border-radius: 0px; 
+            color: white;
+            text-align: center;
+            z-index: 20;  
+            display: none; 
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+        }
+
+        #gameOverScreen h2 {
+            font-size: 45px;
+            margin-bottom: 25px; 
+            color: #ffcc00; 
+            text-shadow: 4px 4px #000000;
+            font-family: 'VT323', monospace; /* Updated to VT323 */
+        }
+
+        #scoreboard {
+            background: #deb887; 
+            border: 4px solid #a0522d; 
+            border-radius: 5px;
+            padding: 15px 10px;
+            margin-bottom: 25px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-around; 
+        }
+
+        #characterGameOverPreview {
+            width: 60px; 
+            height: 60px;
+            background: #6a5acd; 
+            border: 2px solid #a0522d; 
+            border-radius: 5px;
+            overflow: hidden; 
+            display: flex; 
+            align-items: center;
+            justify-content: center;
+        }
+
+        #unlockedCharPreview {
+            width: 80px; 
+            height: 80px;
+            border: 4px solid #00ff00; 
+            background: #3c3b5d;
+            border-radius: 5px; 
+            overflow: hidden; 
+            display: flex; 
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #charGameOverImage, #unlockedCharImage {
+            width: 100%; 
+            height: 100%;
+            object-fit: contain; 
+            image-rendering: pixelated; 
+        }
+
+        #gameOverScores {
+            text-align: right;
+            font-family: 'VT323', monospace; /* Updated to VT323 */
+            color: #282828; 
+            font-size: 20px;
+            line-height: 1.2; 
+        }
+        
+        #gameOverScores p {
+            margin: 0; 
+        }
+
+        .score-value {
+            font-size: 28px; 
+            font-weight: bold;
+            color: #ff0000; 
+            text-shadow: 1px 1px #000000;
+            margin-bottom: 5px; 
+            display: block; 
+        }
+        
+        #gameOverScores hr {
+             border-color: #a0522d; 
+             margin: 5px 0;
+        }
+
+        #gameOverScreen button {
+            display: block;
+            width: 80%; 
+            margin: 10px auto; 
+            padding: 12px 15px; 
+            font-size: 22px; 
+            font-weight: bold;
+            background: #4CAF50; 
+            color: white;
+            border: 3px solid #282828;
+            border-radius: 5px;
+            cursor: pointer;
+            text-shadow: 2px 2px #000000;
+            box-shadow: 0 3px 0 #1B5E20; 
+            transition: background-color 0.1s, box-shadow 0.1s, transform 0.1s; 
+        }
+
+        #gameOverScreen button#backToMainMenuButton {
+            background: #f44336; 
+            box-shadow: 0 3px 0 #b71c1c;
+        }
+
+        #gameOverScreen button:hover {
+            background: #66BB6A;
+            transform: translateY(-1px); 
+            box-shadow: 0 4px 0 #1B5E20;
+        }
+        #gameOverScreen button#backToMainMenuButton:hover {
+            background: #e57373;
+            box-shadow: 0 4px 0 #b71c1c;
+        }
+
+        #gameOverScreen button:active {
+            transform: translateY(2px); 
+            box-shadow: 0 1px 0 #1B5E20;
+        }
+        #gameOverScreen button#backToMainMenuButton:active {
+            box-shadow: 0 1px 0 #b71c1c;
+        }
+
+        /* ⭐️ UNLOCK SCREEN STYLING ⭐️ */
+        #unlockScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 280px; 
+            padding: 15px; 
+            background: rgba(40, 40, 40, 0.95); 
+            border: 5px solid #ffcc00; 
+            border-radius: 10px; 
+            color: white;
+            text-align: center;
+            z-index: 25; 
+            display: none; 
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.8);
+        }
+
+        #unlockScreen h2 {
+            font-size: 35px;
+            margin-bottom: 5px;
+            color: #00ff00; 
+            text-shadow: 2px 2px #000000;
+        }
+        
+        #unlockCharName {
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffffff;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px #ff0000;
+        }
+        
+        #unlockContent {
+            display: flex;
+            align-items: center;
+            justify-content: center; 
+            margin-bottom: 20px;
+        }
+        
+        #unlockScreen button {
+            width: 80%; 
+            background: #00ff00;
+            color: #282828;
+            border-color: #00aa00;
+            box-shadow: 0 3px 0 #00aa00;
+            margin: 10px auto; 
+        }
+        
+        #unlockScreen button:hover {
+            background: #44ff44;
+        }
+
+    </style>
+</head>
+<body>
+    
+    
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="320" height="480"></canvas>
+        
+        <div id="goldDisplay">
+            <span id="goldIcon">💰</span>
+            <span id="goldCount">0</span>
+        </div>
+
+        <img id="playerCharacter" src="" alt="Player Character">  
+        
+        <div id="gameMenu">
+            <h2>Flappy with Friends</h2>
+            <button id="playButton">Play</button>
+            <button id="menuCharactersButton">Characters</button>
+            <button id="exitButton">Exit</button>
+        </div>
+        
+        <div id="characterScreen">
+            <h2>Select Character</h2>
+            
+            <div id="charSelectionControls">
+                <button id="prevChar">⬅️</button>
+                <div id="charPreview">
+                    <img id="charPreviewImage" src="" alt="Selected Character Preview">
+                </div>
+                <button id="nextChar">➡️</button>
+            </div>
+            
+            <span id="charNameDisplay">The Original Bird</span>
+            <p id="charUnlockStatus" style="font-size: 16px; margin-top: 10px; color: #ffcc00;">Available</p> 
+            <button id="purchaseButton" style="display: none; background: #FFD700; color: #282828; border-color: #DAA520;">BUY (0 Gold)</button>
+
+            <hr style="border-color: #ffcc00; margin: 15px 0;">
+            <button id="backToMenuButton">Back</button>
+        </div>
+
+        <div id="gameOverScreen">
+            <h2 id="gameOverTitle">GAME OVER</h2>
+            <div id="scoreboard">
+                <div id="characterGameOverPreview">
+                    <img id="charGameOverImage" src="" alt="Player Character">
+                </div>
+                <div id="gameOverScores">
+                    <p>SCORE</p>
+                    <p id="finalScore" class="score-value">0</p>
+                    <p>BEST</p>
+                    <p id="finalHighScore" class="score-value">0</p>
+                    <hr style="border-color: #a0522d; margin: 5px 0;">
+                    <p>GOLD EARNED</p>
+                    <p class="score-value" style="font-size: 24px; color: #FFD700;">0</p>
+                </div>
+            </div>
+            <button id="restartButton">RESTART</button>
+            <button id="backToMainMenuButton">MAIN MENU</button>
+        </div>
+        
+        <div id="unlockScreen">
+            <h2>🎉 NEW CHARACTER UNLOCKED!</h2>
+            <div id="unlockContent">
+                <div id="unlockedCharPreview">
+                    <img id="unlockedCharImage" src="" alt="Unlocked Character">
+                </div>
+            </div>
+            <p id="unlockCharName">Character Name</p>
+            <button id="continueFromUnlock">AWESOME!</button>
+        </div>
+
+    </div>
+
+    <audio id="scoreSound" src="audio/scoreSound.mp3"></audio>
+    <audio id="flapSound" src="audio/flapSound.mp3"></audio>
+    <audio id="crashSound" src="audio/crashSound.mp3"></audio>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const playerImage = document.getElementById("playerCharacter");
+        const gameMenu = document.getElementById("gameMenu");
+        const characterScreen = document.getElementById("characterScreen");
+        const gameOverScreen = document.getElementById("gameOverScreen");
+        const restartButton = document.getElementById("restartButton");
+        const backToMainMenuButton = document.getElementById("backToMainMenuButton");
+        const finalScoreDisplay = document.getElementById("finalScore");
+        const finalHighScoreDisplay = document.getElementById("finalHighScore");
+        const charGameOverImage = document.getElementById("charGameOverImage");
+        
+        // New Unlock Screen Elements
+        const unlockScreen = document.getElementById("unlockScreen");
+        const unlockedCharImage = document.getElementById("unlockedCharImage");
+        const unlockCharName = document.getElementById("unlockCharName");
+        const continueFromUnlockButton = document.getElementById("continueFromUnlock");
+        
+        const playButton = document.getElementById("playButton");
+        const menuCharactersButton = document.getElementById("menuCharactersButton");
+        const exitButton = document.getElementById("exitButton");
+        const backToMenuButton = document.getElementById("backToMenuButton");
+
+        // UI ELEMENTS FOR UNLOCKS
+        const charUnlockStatus = document.getElementById("charUnlockStatus");
+        const purchaseButton = document.getElementById("purchaseButton");
+        const charPreviewContainer = document.getElementById("charPreview"); 
+        
+        // Elements for Gold Display
+        const gameOverScoresDiv = document.getElementById("gameOverScores");
+        const goldDisplayElement = document.getElementById("goldDisplay");
+        const goldCountElement = document.getElementById("goldCount");
+        
+        // --- GAME STATE ---
+        let gameState = 'MENU';  
+        let unlockedCharacterData = null; 
+
+        // --- CORE GAME SETUP ---
+        const bird = {
+            x: 50,
+            y: 150,
+            size: 45,  
+            gravity: 0.4,
+            lift: -7,
+            velocity: 0
+        };
+        
+        playerImage.style.width = `${bird.size}px`;
+        playerImage.style.height = `${bird.size}px`;
+        
+        const pipes = [];
+        const gap = 140;  
+        const pipeWidth = 50;
+        let frame = 0;
+        let score = 0;
+        
+        let highScore = parseInt(localStorage.getItem("flappyHighScore")) || 0;
+        let gameOver = true;  
+        let gameStarted = false;  
+        let goldEarnedThisRun = 0; 
+
+        let backgroundX = 0; 
+        const backgroundSpeed = 0.5; 
+        const groundHeight = 10;
+        
+        // BACKGROUND IMAGE LIST & LOADER 
+        const backgroundFiles = ["bg.jpg", "bg2.jpg"]; 
+        const backgroundImages = [];
+        let currentBackgroundIndex = 0;
+        let nextBackgroundIndex = 0; 
+        let backgroundsLoadedCount = 0;
+
+        // TRANSITION VARIABLES
+        let transitioning = false;
+        let transitionAlpha = 0; 
+        const transitionDuration = 60; 
+
+        backgroundFiles.forEach(file => {
+            const img = new Image();
+            img.src = `background/${file}`; 
+            img.onload = () => {
+                backgroundsLoadedCount++;
+            };
+            backgroundImages.push(img);
+        });
+
+        function getCurrentBackground() {
+            return backgroundImages[currentBackgroundIndex];
+        }
+        
+        function getNextBackground() {
+             return backgroundImages[nextBackgroundIndex];
+        }
+
+        // BACKGROUND CYCLE TIMER 
+        const cycleInterval = 90000; 
+
+        function startTransition() {
+            if (transitioning) return; 
+            
+            nextBackgroundIndex = (currentBackgroundIndex + 1) % backgroundImages.length;
+            
+            transitioning = true;
+            transitionAlpha = 0; 
+            
+            console.log(`Starting transition from index ${currentBackgroundIndex} to ${nextBackgroundIndex}`);
+        }
+        
+        function endTransition() {
+            currentBackgroundIndex = nextBackgroundIndex;
+            transitioning = false;
+            transitionAlpha = 0;
+        }
+
+        let backgroundTimer = setInterval(startTransition, cycleInterval);
+
+
+        // AUDIO SETUP
+        const scoreSound = document.getElementById("scoreSound");
+        const flapSound = document.getElementById("flapSound");
+        const crashSound = document.getElementById("crashSound");
+        
+        const goldSound = document.createElement('audio');
+        goldSound.src = scoreSound.src; 
+        goldSound.load();
+
+
+        // --- GOLD COIN & UNLOCK SETUP ---
+        let gold = parseInt(localStorage.getItem("flappyGold")) || 0;
+        let coin = null; 
+        const coinSize = 15; 
+
+        // COIN SPAWNING
+        let pipeCountSinceLastCoin = 0;
+        let nextCoinPipeGoal = 4;
+        
+        function getNextCoinGoal() {
+            if (score < 30) {
+                return Math.floor(Math.random() * 3) + 4; 
+            } else if (score >= 30 && score < 60) {
+                return Math.floor(Math.random() * 6) + 5; 
+            } else {
+                return Math.floor(Math.random() * 6) + 5; 
+            }
+        }
+        
+        // ⭐️ CHARACTER DATA ⭐️
+        const characters = [
+            { file: "char.gif", name: "Flappy", type: "score", unlockValue: 0, unlocked: true },  
+            { file: "char1.gif", name: "Blue", type: "score", unlockValue: 20, unlocked: false },  
+            { file: "char2.gif", name: "Piggy Pink", type: "score", unlockValue: 50, unlocked: false },  
+            { file: "char3.gif", name: "Bloxxy", type: "score", unlockValue: 80, unlocked: false },  
+            { file: "char4.gif", name: "Dovey", type: "score", unlockValue: 120, unlocked: false },  
+            { file: "char5.gif", name: "Seagull", type: "score", unlockValue: 180, unlocked: false },  
+            { file: "char6.gif", name: "Eagle", type: "score", unlockValue: 200, unlocked: false },  
+            { file: "char7.gif", name: "Crow", type: "gold", unlockValue: 100, unlocked: false },  
+            { file: "char8.gif", name: "Cyber", type: "gold", unlockValue: 200, unlocked: false },
+            { file: "char9.gif", name: "Shadow", type: "gold", unlockValue: 275, unlocked: false },
+            { file: "char10.gif", name: "Hellish", type: "gold", unlockValue: 350, unlocked: false },
+        ];
+        let currentCharIndex = 0;
+        
+        const charNameDisplay = document.getElementById("charNameDisplay");
+        const charPreviewImage = document.getElementById("charPreviewImage");
+        const prevCharButton = document.getElementById("prevChar");
+        const nextCharButton = document.getElementById("nextChar");
+
+        // Load unlock status from localStorage
+        function loadCharacterUnlocks() {
+            characters.forEach(char => {
+                const storedStatus = localStorage.getItem(`charUnlock_${char.name}`);
+                if (storedStatus === 'true') {
+                    char.unlocked = true;
+                }
+            });
+        }
+        loadCharacterUnlocks();
+        
+        let audioInitialized = false;
+
+        function initializeAudio() {
+            if (audioInitialized) return;
+            try {
+                if (flapSound.src) { 
+                    const testSound = new Audio();
+                    testSound.src = flapSound.src;
+                    testSound.volume = 0;
+                    testSound.play().then(() => {
+                        audioInitialized = true;
+                    }).catch(e => {
+                        console.error("Audio initialization failed:", e);
+                    });
+                } else {
+                    audioInitialized = true; 
+                }
+            } catch (e) {
+                console.error("Audio context error:", e);
+            }
+        }
+
+        function handleGameOver() {
+            if (gameOver) return; 
+            
+            gameOver = true;
+            
+            if (crashSound.readyState >= 2) { 
+                crashSound.currentTime = 0;
+                crashSound.play();
+            }
+            
+            // NOTE: Gold update logic is now handled in the update loop (when coin is collected).
+            // We only need to save the total gold here.
+            localStorage.setItem("flappyGold", gold);
+
+            let unlockedNow = false;
+            const currentMaxScore = Math.max(score, highScore);
+            
+            characters.forEach(char => {
+                if (!char.unlocked && char.type === 'score' && currentMaxScore >= char.unlockValue) {
+                    char.unlocked = true;
+                    localStorage.setItem(`charUnlock_${char.name}`, 'true');
+                    unlockedCharacterData = char; 
+                    unlockedNow = true;
+                }
+            });
+            
+            if (unlockedNow) {
+                gameState = 'UNLOCKED';
+                unlockedCharImage.src = `characters/${unlockedCharacterData.file}`;
+                unlockCharName.innerText = unlockedCharacterData.name;
+            } else {
+                gameState = 'GAMEOVER';
+            }
+        }
+        
+        function updateCharacter() {
+            const char = characters[currentCharIndex];
+            
+            playerImage.src = `characters/${char.file}`; 
+            charPreviewImage.src = `characters/${char.file}`;
+            charNameDisplay.innerText = char.name;
+
+            if (char.unlocked) {
+                charUnlockStatus.innerText = "Available!";
+                charUnlockStatus.style.color = '#4CAF50';
+                purchaseButton.style.display = 'none';
+                purchaseButton.disabled = true; 
+                charPreviewContainer.classList.remove('locked'); 
+            } else {
+                charPreviewContainer.classList.add('locked'); 
+
+                if (char.type === 'score') {
+                    charUnlockStatus.innerText = `LOCKED: Achieve High Score of ${char.unlockValue}`;
+                    charUnlockStatus.style.color = '#f44336'; 
+                    purchaseButton.style.display = 'none'; 
+                    purchaseButton.disabled = true;
+                    
+                } else if (char.type === 'gold') {
+                    purchaseButton.style.display = 'block';
+                    purchaseButton.innerText = `BUY (${char.unlockValue} Gold)`;
+                    const canAfford = gold >= char.unlockValue;
+                    
+                    purchaseButton.disabled = !canAfford;
+                    purchaseButton.style.opacity = canAfford ? 1.0 : 0.5;
+                    
+                    charUnlockStatus.innerText = `Cost: ${char.unlockValue} Gold (You have ${gold})`;
+                    charUnlockStatus.style.color = canAfford ? '#4CAF50' : '#f44336';
+                }
+            }
+        }
+        
+        function switchCharacter(direction) {
+            let newIndex = currentCharIndex + direction;
+            
+            if (newIndex < 0) {
+                newIndex = characters.length - 1;
+            } else if (newIndex >= characters.length) {
+                newIndex = 0;
+            }
+            
+            currentCharIndex = newIndex;
+            updateCharacter();
+        }
+        
+        prevCharButton.addEventListener('click', () => switchCharacter(-1));
+        nextCharButton.addEventListener('click', () => switchCharacter(1));
+        
+        /* --- DRAWING FUNCTIONS --- */
+        
+        function drawScrollingImage(image, alpha = 1) {
+            if (!image.complete) return;
+            
+            const imageWidth = image.width; 
+            const imageHeight = image.height;
+            const canvasWidth = canvas.width; 
+            
+            // Scale to fit canvas height
+            const scale = canvas.height / imageHeight; 
+            const scaledWidth = imageWidth * scale;
+
+            ctx.globalAlpha = alpha; 
+            
+            // Draw multiple copies to ensure seamless scrolling
+            // Calculate startX to ensure seamless wrapping
+            let startX = backgroundX % scaledWidth;
+            if (startX > 0) { 
+                startX -= scaledWidth;
+            }
+
+            // Draw enough images to cover the canvas width plus one full image
+            for (let i = 0; i * scaledWidth + startX < canvasWidth + scaledWidth; i++) { 
+                ctx.drawImage(
+                    image, 
+                    0, 0, imageWidth, imageHeight, 
+                    startX + i * scaledWidth, 0, scaledWidth, canvas.height 
+                );
+            }
+            ctx.globalAlpha = 1; 
+        }
+        
+        function drawBackground() {
+            const currentBackground = getCurrentBackground();
+            
+            drawScrollingImage(currentBackground);
+            
+            if (transitioning) {
+                 const nextBackground = getNextBackground();
+                 const fadeAlpha = Math.min(1, transitionAlpha / transitionDuration);
+                 drawScrollingImage(nextBackground, fadeAlpha);
+            }
+            
+            if (gameState === 'PLAYING' && gameStarted) {
+                backgroundX -= backgroundSpeed;  
+            }
+        }
+        
+        function positionCharacter() {
+            const xTopLeft = bird.x - bird.size / 2;
+            const yTopLeft = bird.y - bird.size / 2;
+            
+            playerImage.style.marginLeft = `${xTopLeft}px`;
+            playerImage.style.marginTop = `${yTopLeft}px`;
+            
+            playerImage.style.visibility = 'visible';
+        }
+
+        function drawBird() {
+            positionCharacter();
+        }
+        
+        function drawPipes() {
+            pipes.forEach((pipe) => {
+                ctx.strokeStyle = "#000000";
+                ctx.lineWidth = 3;  
+                ctx.fillStyle = "#a0522d";  
+                
+                ctx.fillRect(pipe.x, 0, pipeWidth, pipe.top);
+                ctx.strokeRect(pipe.x, 0, pipeWidth, pipe.top);
+
+                ctx.fillRect(pipe.x, pipe.top + gap, pipeWidth, canvas.height - pipe.top - gap);
+                ctx.strokeRect(pipe.x, pipe.top + gap, pipeWidth, canvas.height - pipe.top + gap);
+                
+                ctx.fillStyle = "#ffcc00";  
+                const capHeight = 15;
+                
+                ctx.fillRect(pipe.x - 5, pipe.top - capHeight, pipeWidth + 10, capHeight);
+                ctx.strokeRect(pipe.x - 5, pipe.top - capHeight, pipeWidth + 10, capHeight);
+
+                ctx.fillRect(pipe.x - 5, pipe.top + gap, pipeWidth + 10, capHeight);
+                ctx.strokeRect(pipe.x - 5, pipe.top + gap, pipeWidth + 10, capHeight);
+            });
+        }
+        
+        function drawCoin() {
+            if (gameState !== 'PLAYING' || !coin) return;
+            
+            ctx.beginPath();
+            ctx.fillStyle = "#FFD700"; 
+            ctx.arc(coin.x + coinSize / 2, coin.y + coinSize / 2, coinSize / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "#DAA520"; 
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.closePath();
+        }
+
+        function drawGround() {
+            ctx.fillStyle = "#4caf50";  
+            ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
+            ctx.strokeStyle = "#282828";
+            ctx.lineWidth = 3;
+            ctx.strokeRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
+        }
+        
+        function drawGetReady() {
+            // Using the new VT323 font for clarity
+            ctx.fillStyle = "#98fb98";  
+            ctx.strokeStyle = "#000000";
+            ctx.lineWidth = 6;
+            ctx.font = "bold 40px 'VT323', monospace";
+            ctx.textAlign = "center";
+            ctx.strokeText("Get Ready!", canvas.width / 2, canvas.height / 2 - 80);
+            ctx.fillText("Get Ready!", canvas.width / 2, canvas.height / 2 - 80);
+                            
+            ctx.font = "bold 18px 'VT323', monospace";
+            ctx.fillStyle = "#ffffff";
+            ctx.strokeStyle = "#ff0000";  
+            ctx.lineWidth = 3;
+            
+            ctx.strokeText("TAP", canvas.width / 2 - 70, canvas.height / 2 + 50);
+            ctx.fillText("TAP", canvas.width / 2 - 70, canvas.height / 2 + 50);
+
+            ctx.strokeText("TAP", canvas.width / 2 + 70, canvas.height / 2 + 50);
+            ctx.fillText("TAP", canvas.width / 2 + 70, canvas.height / 2 + 50);
+            
+            if (frame % 30 < 15) {
+                ctx.fillStyle = "#ffffff";
+                ctx.beginPath();
+                ctx.moveTo(canvas.width / 2 - 10, canvas.height / 2 + 10);
+                ctx.lineTo(canvas.width / 2 + 10, canvas.height / 2 + 10);
+                ctx.lineTo(canvas.width / 2, canvas.height / 2 - 10);
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+
+        function drawGameOver() {
+            // Using the new VT323 font for clarity
+            ctx.fillStyle = "#ffffff";
+            ctx.strokeStyle = "#000000";
+            ctx.lineWidth = 4;
+            ctx.font = "bold 30px 'VT323', monospace";
+            ctx.textAlign = "center";
+            ctx.strokeText("GAME OVER", canvas.width / 2, canvas.height / 2 - 20);
+            ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 20);
+        }
+
+        // ⭐️ UPDATED: Draw ONLY Current Score, using fixed font stack ⭐️
+        function drawScoreDisplay() {
+            ctx.fillStyle = "white";
+            ctx.strokeStyle = "black";
+            ctx.lineWidth = 3;
+            // Use a bold weight and the new pixel font stack for clean numbers
+            ctx.font = "bold 55px 'VT323', monospace"; 
+            ctx.textAlign = "center"; 
+            
+            // Score
+            ctx.strokeText(score, canvas.width / 2, 60);
+            ctx.fillText(score, canvas.width / 2, 60);
+        }
+
+        // UPDATED: Update Game Over Scoreboard with all info
+        function updateGameOverScores() {
+            highScore = parseInt(localStorage.getItem("flappyHighScore")) || 0;
+            
+            // Generate the HTML content dynamically to include Score, Best, and Gold
+            gameOverScoresDiv.innerHTML = `
+                <p>SCORE</p>
+                <p id="finalScore" class="score-value">${score}</p>
+                <p>BEST</p>
+                <p id="finalHighScore" class="score-value">${highScore}</p>
+                <hr style="border-color: #a0522d; margin: 5px 0;">
+                <p>GOLD EARNED</p>
+                <p class="score-value" style="font-size: 24px; color: #FFD700;">${goldEarnedThisRun}</p>
+            `;
+        }
+        
+        // ⭐️ NEW: Function to update Gold Display ⭐️
+        function updateGoldDisplay() {
+            goldCountElement.innerText = gold;
+            
+            // Manage visibility based on game state
+            if (gameState === 'GAMEOVER' || gameState === 'UNLOCKED') {
+                goldDisplayElement.style.display = 'none';
+            } else {
+                goldDisplayElement.style.display = 'flex';
+            }
+        }
+
+
+        /* --- GAME LOOP & LOGIC --- */
+
+        function update() {
+            if (gameState !== 'PLAYING' || gameOver || !gameStarted) return;
+
+            bird.velocity += bird.gravity;
+            bird.y += bird.velocity;
+
+            let currentPipeSpeed = 2 + Math.floor(score / 10) * 0.5;
+            if (currentPipeSpeed > 5) currentPipeSpeed = 5; 
+
+            // PIPE GENERATION
+            if (frame % 90 === 0) {
+                const top = Math.random() * (canvas.height / 2);
+                pipes.push({ x: canvas.width, top, passed: false });
+                
+                // --- COIN SPAWNING LOGIC ---
+                pipeCountSinceLastCoin++;
+                
+                if (pipeCountSinceLastCoin >= nextCoinPipeGoal) {
+                    const pipe = pipes[pipes.length - 1]; 
+                    
+                    coin = {
+                        x: pipe.x + pipeWidth / 2 - coinSize / 2, // Initial X position 
+                        y: pipe.top + gap / 2 - coinSize / 2,     
+                        pipeIndex: pipes.length - 1 
+                    };
+                    
+                    pipeCountSinceLastCoin = 0;
+                    nextCoinPipeGoal = getNextCoinGoal(); 
+                }
+                // --- END COIN SPAWNING LOGIC ---
+            }
+            
+            // Check if coin passed the screen without being collected
+            if (coin) {
+                 const currentPipe = pipes[coin.pipeIndex];
+                 
+                 if (!currentPipe || currentPipe.x < -pipeWidth) {
+                     coin = null;
+                 }
+            }
+
+
+            pipes.forEach((pipe, index) => {
+                pipe.x -= currentPipeSpeed; 
+
+                // ⭐️ SCORE CHECK ⭐️
+                if (!pipe.passed && pipe.x + pipeWidth < bird.x) {
+                    pipe.passed = true;
+                    score++;
+                    if (scoreSound.readyState >= 2) { 
+                       scoreSound.currentTime = 0; 
+                       scoreSound.play();
+                    }
+                    
+                    if (score === 30 || score === 60) {
+                         nextCoinPipeGoal = getNextCoinGoal(); 
+                         pipeCountSinceLastCoin = 0; 
+                    }
+                    
+                    if (score > highScore) {
+                        highScore = score;
+                        localStorage.setItem("flappyHighScore", highScore);
+                    }
+                }
+                
+                // --- COIN COLLECTION CHECK (FIXED) ---
+                if (coin && index === coin.pipeIndex) {
+                    // Update coin's X position with the pipe's X position
+                    coin.x = pipe.x + pipeWidth / 2 - coinSize / 2;
+
+                    const halfSize = bird.size / 2;
+                    if (
+                        coin.x + coinSize > bird.x - halfSize && 
+                        coin.x < bird.x + halfSize && 
+                        coin.y + coinSize > bird.y - halfSize && 
+                        coin.y < bird.y + halfSize
+                    ) {
+                        goldEarnedThisRun++; 
+                        
+                        // ⭐️ FIX: Instantly update total gold and save to storage ⭐️
+                        gold++;
+                        localStorage.setItem("flappyGold", gold);
+                        updateGoldDisplay(); // Refresh the top-left count
+                        // ⭐️ END FIX ⭐️
+                        
+                        if (goldSound.readyState >= 2) { 
+                            goldSound.currentTime = 0;
+                            goldSound.play();
+                        }
+                        coin = null; 
+                    }
+                }
+                // --- END COIN COLLECTION CHECK ---
+
+
+                // ⭐️ PIPE COLLISION CHECK ⭐️
+                const halfSize = bird.size / 2;
+                if (
+                    bird.x + halfSize > pipe.x &&
+                    bird.x - halfSize < pipe.x + pipeWidth &&
+                    (bird.y - halfSize < pipe.top || bird.y + halfSize > pipe.top + gap)
+                ) {
+                    handleGameOver(); 
+                }
+            });
+
+            // GROUND/CEILING COLLISION CHECK
+            if (bird.y + bird.size / 2 > canvas.height - groundHeight || bird.y - bird.size / 2 < 0) {
+                handleGameOver(); 
+            }
+
+            // ⭐️ Handle Pipe and Coin Index Update ⭐️
+            if (pipes.length && pipes[0].x < -pipeWidth) {
+                pipes.shift(); 
+                
+                // If a pipe is removed, and the coin was tied to that pipe, remove the coin.
+                if (coin && coin.pipeIndex === 0) {
+                    coin = null;
+                }
+                
+                // Crucially, decrement the pipeIndex for any remaining coin.
+                if (coin) {
+                    coin.pipeIndex--;
+                }
+            }
+        }
+
+        function loop() {
+            if (!ctx) {
+                console.error("Canvas context not available!");
+                return;
+            }
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // ⭐️ TRANSITION UPDATE ⭐️
+            if (transitioning) {
+                 if (transitionAlpha < transitionDuration) {
+                     transitionAlpha++;
+                 } else {
+                     endTransition();
+                 }
+            }
+
+            drawBackground(); 
+            
+            drawPipes();
+            drawCoin(); 
+            drawGround();
+            
+            // State Management
+            gameMenu.style.display = 'none';
+            characterScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none'; 
+            unlockScreen.style.display = 'none'; 
+            playerImage.style.visibility = 'hidden'; // Default hide
+            
+            updateGoldDisplay(); // Update the top-left gold display
+
+            if (gameState !== 'PLAYING') {
+                coin = null; 
+            }
+
+            if (gameState === 'MENU') {
+                gameMenu.style.display = 'block';  
+                bird.y = 150 + Math.sin(frame * 0.05) * 5;  
+                
+                const selectedChar = characters[currentCharIndex];
+                if (selectedChar && selectedChar.unlocked) {
+                    playerImage.src = `characters/${selectedChar.file}`; 
+                } else if (characters[0].unlocked) {
+                    playerImage.src = `characters/${characters[0].file}`; 
+                }
+                playerImage.style.visibility = 'visible'; 
+                drawBird();  
+                
+            } else if (gameState === 'CHARACTERS') {
+                characterScreen.style.display = 'block';
+                bird.y = 150 + Math.sin(frame * 0.05) * 5;  
+                playerImage.style.visibility = 'visible'; 
+                drawBird();
+            
+            } else if (gameState === 'UNLOCKED') {
+                unlockScreen.style.display = 'block'; 
+                playerImage.style.visibility = 'visible';
+                drawBird(); 
+                
+            } else if (gameState === 'GAMEOVER') {
+                drawGameOver();  
+                gameOverScreen.style.display = 'block';  
+                updateGameOverScores(); 
+                charGameOverImage.src = playerImage.src;  
+                
+            } else if (gameState === 'PLAYING') {
+                drawScoreDisplay(); 
+
+                if (!gameStarted) {
+                    drawGetReady();
+                    playerImage.style.visibility = 'visible';
+                    drawBird();
+                } else {
+                    update();
+                    playerImage.style.visibility = 'visible';
+                    drawBird();
+                }
+            }
+
+            requestAnimationFrame(loop);
+            frame++;  
+        }
+        
+        function resetGame() {
+            bird.x = 50;  
+            bird.y = 150;
+            bird.velocity = 0;
+            pipes.length = 0;
+            score = 0;
+            goldEarnedThisRun = 0; // This variable is now only for the Game Over summary screen
+            backgroundX = 0; 
+            gameOver = false;
+            gameStarted = false; 
+            playerImage.style.visibility = 'visible';
+
+            pipeCountSinceLastCoin = 0;
+            nextCoinPipeGoal = 4; 
+            coin = null;
+            
+            // Re-load current total gold from storage
+            gold = parseInt(localStorage.getItem("flappyGold")) || 0; 
+            updateGoldDisplay();
+
+            gameMenu.querySelector('h2').innerText = "Flappy with Friends";
+            
+            transitioning = false; 
+            transitionAlpha = 0;
+            currentBackgroundIndex = 0; 
+            nextBackgroundIndex = 0;
+        }
+        
+        function flap() {
+            if (gameState === 'PLAYING' && !gameOver) {
+                initializeAudio();  
+                
+                if (!gameStarted) {
+                    gameStarted = true; 
+                }
+                bird.velocity = bird.lift;
+                if (flapSound.readyState >= 2) { 
+                    flapSound.currentTime = 0;
+                    flapSound.play();
+                }
+            }  
+        }
+
+        /* --- EVENT LISTENERS --- */
+        
+        playButton.addEventListener('click', () => {
+            initializeAudio();
+            const char = characters[currentCharIndex]; 
+            
+            if (char.unlocked) {
+                gameState = 'PLAYING';
+                resetGame();
+            } else {
+                const unlockCondition = char.type === 'score' ? 
+                    `High Score of ${char.unlockValue}` : 
+                    `${char.unlockValue} Gold`;
+                    
+                alert(`The character "${char.name}" is locked! You must unlock it via the Characters menu or achieve a ${unlockCondition} to play.`);
+            }
+        });
+
+        menuCharactersButton.addEventListener('click', () => {
+            gameState = 'CHARACTERS';
+            updateCharacter(); 
+            updateGoldDisplay(); 
+        });
+        
+        backToMenuButton.addEventListener('click', () => {
+            gameState = 'MENU';
+            loadCharacterUnlocks(); 
+            updateGoldDisplay(); 
+        });
+
+        exitButton.addEventListener('click', () => {
+            alert("Exiting the game. Thanks for playing!");
+        });
+        
+        // GAME OVER BUTTON LISTENERS  
+        restartButton.addEventListener('click', () => {
+            gameState = 'PLAYING';
+            resetGame();
+        });
+
+        backToMainMenuButton.addEventListener('click', () => {
+            gameState = 'MENU';
+            resetGame(); 
+        });
+        
+        // UNLOCK SCREEN BUTTON LISTENER 
+        continueFromUnlockButton.addEventListener('click', () => {
+            gameState = 'GAMEOVER';
+            unlockedCharacterData = null;
+        });
+
+
+        // PURCHASE BUTTON LISTENER
+        purchaseButton.addEventListener('click', () => {
+            const char = characters[currentCharIndex];
+            if (!char.unlocked && char.type === 'gold' && gold >= char.unlockValue) {
+                gold -= char.unlockValue;
+                char.unlocked = true;
+                localStorage.setItem("flappyGold", gold);
+                localStorage.setItem(`charUnlock_${char.name}`, 'true');
+                
+                // Show the new unlock screen instead of an alert
+                unlockedCharacterData = char;
+                gameState = 'UNLOCKED';
+                unlockedCharImage.src = `characters/${unlockedCharacterData.file}`;
+                unlockCharName.innerText = unlockedCharacterData.name;
+                
+                updateCharacter(); 
+                loadCharacterUnlocks(); 
+                updateGoldDisplay();
+            }
+        });
+
+        document.addEventListener("keydown", (e) => {
+            if (e.code === "Space") {
+                e.preventDefault();  
+                flap();
+            }
+        });
+
+        canvas.addEventListener("click", () => {
+            flap();
+        });
+        
+        // Initial Setup
+        loadCharacterUnlocks(); 
+        updateCharacter();  
+        resetGame(); 
+        gameState = 'MENU'; 
+        loop();
+    </script>
+</body>
+</html>
